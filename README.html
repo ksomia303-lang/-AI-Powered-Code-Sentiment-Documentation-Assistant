@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeLens AI - Code Sentiment & Documentation Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg-card: #161b22;
+            --bg-input: #0d1117;
+            --fg: #e6edf3;
+            --muted: #7d8590;
+            --accent: #2dd4bf;
+            --accent-secondary: #f97316;
+            --border: #30363d;
+            --success: #3fb950;
+            --warning: #d29922;
+            --error: #f85149;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Background Grid Pattern */
+        .bg-grid {
+            background-image: 
+                linear-gradient(rgba(45, 212, 191, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(45, 212, 191, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        /* Glow Effects */
+        .glow-accent {
+            box-shadow: 0 0 40px rgba(45, 212, 191, 0.15);
+        }
+
+        .glow-text {
+            text-shadow: 0 0 30px rgba(45, 212, 191, 0.3);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--muted);
+        }
+
+        /* Code Editor */
+        .code-textarea {
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--fg);
+            resize: vertical;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .code-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.1);
+        }
+
+        .code-textarea::placeholder {
+            color: var(--muted);
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, #14b8a6 100%);
+            color: var(--bg);
+            font-weight: 600;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+            font-size: 15px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(45, 212, 191, 0.25);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--fg);
+            font-weight: 500;
+            padding: 12px 24px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            background: rgba(45, 212, 191, 0.05);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+            white-space: nowrap;
+            transition: color 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--fg);
+        }
+
+        .tab.active {
+            color: var(--accent);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent);
+        }
+
+        /* Metric Cards */
+        .metric-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .metric-card:hover {
+            border-color: rgba(45, 212, 191, 0.3);
+        }
+
+        .metric-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* Score Ring */
+        .score-ring {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+        }
+
+        .score-ring svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .score-ring circle {
+            fill: none;
+            stroke-width: 6;
+            stroke-linecap: round;
+        }
+
+        .score-ring .bg-circle {
+            stroke: var(--border);
+        }
+
+        .score-ring .progress-circle {
+            transition: stroke-dashoffset 1s ease-out;
+        }
+
+        .score-ring .score-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            background: var(--bg);
+            border-radius: 4px;
+            height: 6px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.8s ease-out;
+        }
+
+        /* Issue Tags */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .tag-error {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--error);
+        }
+
+        .tag-warning {
+            background: rgba(210, 153, 34, 0.15);
+            color: var(--warning);
+        }
+
+        .tag-info {
+            background: rgba(45, 212, 191, 0.15);
+            color: var(--accent);
+        }
+
+        /* Documentation Output */
+        .doc-output {
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .animate-fadeIn {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        .animate-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-card) 25%, var(--border) 50%, var(--bg-card) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Floating Elements */
+        .float-element {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .metric-value {
+                font-size: 20px;
+            }
+            
+            .score-ring {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .score-ring .score-text {
+                font-size: 20px;
+            }
+            
+            .card-header {
+                padding: 12px 16px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .card-body {
+                padding: 16px;
+            }
+            
+            .tabs {
+                margin: 0 -20px;
+                padding: 0 20px;
+            }
+        }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Select Styling */
+        select {
+            font-family: inherit;
+        }
+
+        /* Focus States */
+        *:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        button:focus-visible {
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body class="bg-grid">
+    <!-- Floating Background Elements -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="float-element" style="width: 400px; height: 400px; background: radial-gradient(circle, rgba(45, 212, 191, 0.08) 0%, transparent 70%); top: -100px; right: -100px;"></div>
+        <div class="float-element" style="width: 300px; height: 300px; background: radial-gradient(circle, rgba(249, 115, 22, 0.06) 0%, transparent 70%); bottom: 10%; left: -50px;"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-[var(--bg)]/90 backdrop-blur-md border-b border-[var(--border)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+            <div class="flex items-center justify-between">
+                <!-- Logo -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--accent)] to-teal-600 flex items-center justify-center flex-shrink-0">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--bg)]">
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight">CodeLens AI</h1>
+                        <p class="text-xs text-[var(--muted)] hidden sm:block">Sentiment & Documentation Assistant</p>
+                    </div>
+                </div>
+
+                <!-- Nav -->
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="#analyzer" class="text-sm text-[var(--muted)] hover:text-[var(--fg)] transition-colors">Analyzer</a>
+                    <a href="#features" class="text-sm text-[var(--muted)] hover:text-[var(--fg)] transition-colors">Features</a>
+                    <a href="#documentation" class="text-sm text-[var(--muted)] hover:text-[var(--fg)] transition-colors">Documentation</a>
+                </nav>
+
+                <!-- Status -->
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="w-2 h-2 rounded-full bg-[var(--success)]"></span>
+                    <span class="text-[var(--muted)] hidden sm:inline">AI Ready</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative py-12 sm:py-16 lg:py-20 px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] text-xs font-medium mb-6">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                </svg>
+                AI-Powered Analysis
+            </div>
+
+            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight px-4">
+                Understand Your Code<br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent)] to-[var(--accent-secondary)]">
+                    Better Than Ever
+                </span>
+            </h2>
+
+            <p class="text-[var(--muted)] text-base sm:text-lg max-w-xl mx-auto mb-8 px-4">
+                Instantly analyze code sentiment, generate documentation, and get actionable insights for cleaner, more maintainable code.
+            </p>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 px-4">
+                <button onclick="scrollToAnalyzer()" class="btn-primary w-full sm:w-auto">
+                    Start Analyzing
+                </button>
+                <button onclick="loadSampleCode()" class="btn-secondary w-full sm:w-auto">
+                    Try Sample Code
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Analyzer Section -->
+    <section id="analyzer" class="py-12 px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid lg:grid-cols-2 gap-6">
+                
+                <!-- Input Panel -->
+                <div class="card animate-fadeIn" style="animation-delay: 0.1s;">
+                    <div class="card-header">
+                        <h3 class="font-semibold flex items-center gap-2">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--accent)]">
+                                <polyline points="16 18 22 12 16 6"></polyline>
+                                <polyline points="8 6 2 12 8 18"></polyline>
+                            </svg>
+                            Code Input
+                        </h3>
+                        <select id="languageSelect" class="bg-[var(--bg)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm focus:border-[var(--accent)] focus:outline-none transition-colors">
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="go">Go</option>
+                        </select>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="tabs px-5">
+                        <button class="tab active" data-tab="paste">Paste Code</button>
+                        <button class="tab" data-tab="upload">Upload File</button>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- Paste Tab -->
+                        <div id="pasteTab" class="tab-content">
+                            <textarea 
+                                id="codeInput"
+                                class="code-textarea w-full"
+                                style="min-height: 280px;"
+                                placeholder="// Paste your code here for analysis...&#10;&#10;// Example:&#10;function greet(name) {&#10;  return 'Hello, ' + name;&#10;}"
+                                spellcheck="false"
+                                aria-label="Code input area"
+                            ></textarea>
+                            <div class="flex items-center justify-between mt-3 text-xs text-[var(--muted)]">
+                                <span id="charCount">0 characters</span>
+                                <span id="lineCount">0 lines</span>
+                            </div>
+                        </div>
+
+                        <!-- Upload Tab -->
+                        <div id="uploadTab" class="tab-content hidden">
+                            <div 
+                                id="dropZone"
+                                class="border-2 border-dashed border-[var(--border)] rounded-lg p-8 text-center cursor-pointer hover:border-[var(--accent)] transition-colors"
+                                role="button"
+                                tabindex="0"
+                                aria-label="Drop zone for file upload"
+                            >
+                                <svg class="mx-auto mb-3 text-[var(--muted)]" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <p class="text-[var(--fg)] font-medium mb-1">Drop your file here</p>
+                                <p class="text-[var(--muted)] text-sm">or click to browse</p>
+                                <input type="file" id="fileInput" class="hidden" accept=".js,.py,.java,.cpp,.c,.go,.ts,.jsx,.tsx">
+                            </div>
+                        </div>
+
+                        <!-- Analyze Button -->
+                        <button 
+                            id="analyzeBtn" 
+                            onclick="analyzeCode()" 
+                            class="btn-primary w-full mt-4 flex items-center justify-center gap-2"
+                        >
+                            <svg id="analyzeBtnIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <span id="analyzeBtnText">Analyze Code</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Results Panel -->
+                <div class="card animate-fadeIn" style="animation-delay: 0.2s;">
+                    <div class="card-header">
+                        <h3 class="font-semibold flex items-center gap-2">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--accent-secondary)]">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                            </svg>
+                            Analysis Results
+                        </h3>
+                        <span id="analysisStatus" class="text-xs text-[var(--muted)]">Waiting for input</span>
+                    </div>
+
+                    <div class="card-body" id="resultsContainer">
+                        <!-- Empty State -->
+                        <div id="emptyState" class="text-center py-12">
+                            <svg class="mx-auto mb-4 text-[var(--muted)] opacity-50" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                                <line x1="9" y1="21" x2="9" y2="9"></line>
+                            </svg>
+                            <p class="text-[var(--muted)]">Paste code and click Analyze to see results</p>
+                        </div>
+
+                        <!-- Loading State -->
+                        <div id="loadingState" class="hidden space-y-4 py-8">
+                            <div class="skeleton h-8 w-3/4"></div>
+                            <div class="skeleton h-24"></div>
+                            <div class="skeleton h-16"></div>
+                            <div class="skeleton h-32"></div>
+                        </div>
+
+                        <!-- Results Content -->
+                        <div id="resultsContent" class="hidden space-y-6">
+                            <!-- Score Rings -->
+                            <div id="scoreRings" class="flex flex-wrap justify-center gap-4 sm:gap-6"></div>
+
+                            <!-- Metrics Grid -->
+                            <div id="metricsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+
+                            <!-- Progress Bars -->
+                            <div id="progressBars" class="space-y-4"></div>
+
+                            <!-- Issues -->
+                            <div id="issuesContainer"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-16 px-4 sm:px-6 border-t border-[var(--border)]">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-2xl sm:text-3xl font-bold mb-3">Powerful Features</h2>
+                <p class="text-[var(--muted)]">Everything you need to analyze and improve your code</p>
+            </div>
+
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="metric-card">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--accent)]">
+                                <path d="M12 20V10"></path>
+                                <path d="M18 20V4"></path>
+                                <path d="M6 20v-4"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold">Sentiment Analysis</h3>
+                    </div>
+                    <p class="text-sm text-[var(--muted)]">Detect code patterns and quality indicators with intelligent scoring.</p>
+                </div>
+
+                <div class="metric-card">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-[var(--accent-secondary)]/10 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--accent-secondary)]">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold">Auto Documentation</h3>
+                    </div>
+                    <p class="text-sm text-[var(--muted)]">Generate comprehensive documentation automatically from your code.</p>
+                </div>
+
+                <div class="metric-card">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-[var(--error)]/10 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--error)]">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold">Issue Detection</h3>
+                    </div>
+                    <p class="text-sm text-[var(--muted)]">Identify potential bugs, anti-patterns, and areas for improvement.</p>
+                </div>
+
+                <div class="metric-card">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-[var(--success)]/10 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--success)]">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold">Quality Metrics</h3>
+                    </div>
+                    <p class="text-sm text-[var(--muted)]">Get detailed scores for quality, readability, and maintainability.</p>
+                </div>
+
+                <div class="metric-card">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-[var(--warning)]/10 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--warning)]">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold">Best Practices</h3>
+                    </div>
+                    <p class="text-sm text-[var(--muted)]">Learn coding best practices with actionable suggestions.</p>
+                </div>
+
+                <div class="metric-card">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-400">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold">Multi-Language</h3>
+                    </div>
+                    <p class="text-sm text-[var(--muted)]">Support for JavaScript, Python, Java, C++, Go, and more.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation Section -->
+    <section id="documentation" class="py-16 px-4 sm:px-6 border-t border-[var(--border)]">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl sm:text-3xl font-bold mb-3">Generated Documentation</h2>
+                <p class="text-[var(--muted)]">Auto-generated documentation appears here after analysis</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-[var(--error)]"></span>
+                        <span class="w-3 h-3 rounded-full bg-[var(--warning)]"></span>
+                        <span class="w-3 h-3 rounded-full bg-[var(--success)]"></span>
+                        <span class="text-sm text-[var(--muted)] ml-2">documentation.md</span>
+                    </div>
+                    <button onclick="copyDocs()" class="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5" id="copyBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Copy
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="docsOutput" class="doc-output text-[var(--muted)] min-h-[150px]">
+                        <p class="text-center py-6">Run code analysis to generate documentation...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-[var(--border)] py-8 px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-md bg-gradient-to-br from-[var(--accent)] to-teal-600 flex items-center justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-[var(--bg)]">
+                        <polyline points="16 18 22 12 16 6"></polyline>
+                        <polyline points="8 6 2 12 8 18"></polyline>
+                    </svg>
+                </div>
+                <span class="font-semibold">CodeLens AI</span>
+            </div>
+            <p class="text-sm text-[var(--muted)]">Built for Hackathon 2024</p>
+        </div>
+    </footer>
+
+    <script>
+        // ============================================
+        // SAMPLE CODE DATA
+        // ============================================
+        const sampleCodes = {
+            javascript: `/**
+ * UserService - Handles user authentication
+ */
+class UserService {
+    constructor(apiClient) {
+        this.client = apiClient;
+        this.cache = new Map();
+    }
+
+    async authenticate(email, password) {
+        if (!email || !password) {
+            throw new Error('Invalid credentials');
+        }
+        
+        const response = await this.client.post('/auth/login', {
+            email,
+            password
+        });
+        
+        return response.data;
+    }
+
+    async getUserProfile(userId) {
+        if (this.cache.has(userId)) {
+            return this.cache.get(userId);
+        }
+        
+        const profile = await this.client.get('/users/' + userId);
+        this.cache.set(userId, profile.data);
+        
+        return profile.data;
+    }
+
+    validateEmail(email) {
+        const regex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+        return regex.test(email);
+    }
+}`,
+            python: `"""
+DataProcessor - A utility class for data processing
+"""
+import pandas as pd
+import numpy as np
+from typing import List, Dict
+
+class DataProcessor:
+    def __init__(self, data: pd.DataFrame):
+        self.data = data
+        self._processed = False
+        
+    def clean_data(self) -> pd.DataFrame:
+        """Remove null values and duplicates."""
+        self.data = self.data.dropna()
+        self.data = self.data.drop_duplicates()
+        self._processed = True
+        return self.data
+    
+    def normalize(self, columns: List[str]) -> pd.DataFrame:
+        """Normalize using min-max scaling."""
+        for col in columns:
+            min_val = self.data[col].min()
+            max_val = self.data[col].max()
+            self.data[col] = (self.data[col] - min_val) / (max_val - min_val)
+        return self.data
+    
+    def get_statistics(self) -> Dict:
+        """Return basic statistics."""
+        return {
+            'mean': self.data.mean(numeric_only=True).to_dict(),
+            'std': self.data.std(numeric_only=True).to_dict(),
+            'shape': self.data.shape
+        }`,
+            java: `/**
+ * CacheManager - Thread-safe LRU cache
+ */
+public class CacheManager<K, V> {
+    private final int capacity;
+    private final Map<K, V> cache;
+    private final LinkedList<K> accessOrder;
+    
+    public CacheManager(int capacity) {
+        this.capacity = capacity;
+        this.cache = new HashMap<>();
+        this.accessOrder = new LinkedList<>();
+    }
+    
+    public synchronized void put(K key, V value) {
+        if (cache.containsKey(key)) {
+            accessOrder.remove(key);
+        } else if (cache.size() >= capacity) {
+            K oldest = accessOrder.removeFirst();
+            cache.remove(oldest);
+        }
+        
+        cache.put(key, value);
+        accessOrder.addLast(key);
+    }
+    
+    public synchronized V get(K key) {
+        if (cache.containsKey(key)) {
+            accessOrder.remove(key);
+            accessOrder.addLast(key);
+            return cache.get(key);
+        }
+        return null;
+    }
+}`,
+            cpp: `/**
+ * ThreadPool - Simple thread pool implementation
+ */
+class ThreadPool {
+private:
+    std::vector<std::thread> workers;
+    std::queue<std::function<void()>> tasks;
+    std::mutex queue_mutex;
+    std::condition_variable condition;
+    bool stop;
+    
+public:
+    ThreadPool(size_t threads) : stop(false) {
+        for (size_t i = 0; i < threads; ++i) {
+            workers.emplace_back([this] {
+                while (true) {
+                    std::function<void()> task;
+                    {
+                        std::unique_lock<std::mutex> lock(queue_mutex);
+                        condition.wait(lock, [this] {
+                            return stop || !tasks.empty();
+                        });
+                        if (stop && tasks.empty()) return;
+                        task = std::move(tasks.front());
+                        tasks.pop();
+                    }
+                    task();
+                }
+            });
+        }
+    }
+    
+    template<class F>
+    void enqueue(F&& f) {
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            tasks.emplace(std::forward<F>(f));
+        }
+        condition.notify_one();
+    }
+    
+    ~ThreadPool() {
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            stop = true;
+        }
+        condition.notify_all();
+        for (auto& worker : workers) worker.join();
+    }
+};`,
+            go: `// Package cache provides a simple in-memory cache
+package cache
+
+import (
+    "sync"
+    "time"
+)
+
+type Item struct {
+    Value      interface{}
+    Expiration int64
+}
+
+type Cache struct {
+    items map[string]Item
+    mu    sync.RWMutex
+}
+
+func New() *Cache {
+    return &Cache{
+        items: make(map[string]Item),
+    }
+}
+
+func (c *Cache) Set(key string, value interface{}, duration time.Duration) {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    
+    c.items[key] = Item{
+        Value:      value,
+        Expiration: time.Now().Add(duration).UnixNano(),
+    }
+}
+
+func (c *Cache) Get(key string) (interface{}, bool) {
+    c.mu.RLock()
+    defer c.mu.RUnlock()
+    
+    item, found := c.items[key]
+    if !found {
+        return nil, false
+    }
+    
+    if time.Now().UnixNano() > item.Expiration {
+        return nil, false
+    }
+    
+    return item.Value, true
+}
+
+func (c *Cache) Delete(key string) {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    delete(c.items, key)
+}`
+        };
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const codeInput = document.getElementById('codeInput');
+        const languageSelect = document.getElementById('languageSelect');
+        const charCount = document.getElementById('charCount');
+        const lineCount = document.getElementById('lineCount');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const analyzeBtnIcon = document.getElementById('analyzeBtnIcon');
+        const analyzeBtnText = document.getElementById('analyzeBtnText');
+        const analysisStatus = document.getElementById('analysisStatus');
+        const emptyState = document.getElementById('emptyState');
+        const loadingState = document.getElementById('loadingState');
+        const resultsContent = document.getElementById('resultsContent');
+        const docsOutput = document.getElementById('docsOutput');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        // ============================================
+        // TAB SWITCHING
+        // ============================================
+        const tabs = document.querySelectorAll('.tab');
+        const pasteTab = document.getElementById('pasteTab');
+        const uploadTab = document.getElementById('uploadTab');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                const tabName = tab.getAttribute('data-tab');
+                if (tabName === 'paste') {
+                    pasteTab.classList.remove('hidden');
+                    uploadTab.classList.add('hidden');
+                } else {
+                    pasteTab.classList.add('hidden');
+                    uploadTab.classList.remove('hidden');
+                }
+            });
+        });
+
+        // ============================================
+        // CHARACTER/LINE COUNT
+        // ============================================
+        codeInput.addEventListener('input', updateCounts);
+
+        function updateCounts() {
+            const code = codeInput.value;
+            charCount.textContent = code.length.toLocaleString() + ' characters';
+            const lines = code.split('\n').length;
+            lineCount.textContent = lines.toLocaleString() + ' lines';
+        }
+
+        // ============================================
+        // FILE UPLOAD
+        // ============================================
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                fileInput.click();
+            }
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--accent)';
+            dropZone.style.background = 'rgba(45, 212, 191, 0.05)';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = 'var(--border)';
+            dropZone.style.background = 'transparent';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--border)';
+            dropZone.style.background = 'transparent';
+
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                codeInput.value = e.target.result;
+                updateCounts();
+                
+                // Switch to paste tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tabs[0].classList.add('active');
+                pasteTab.classList.remove('hidden');
+                uploadTab.classList.add('hidden');
+            };
+            reader.readAsText(file);
+        }
+
+        // ============================================
+        // LOAD SAMPLE CODE
+        // ============================================
+        function loadSampleCode() {
+            const lang = languageSelect.value;
+            const sample = sampleCodes[lang] || sampleCodes.javascript;
+            codeInput.value = sample;
+            updateCounts();
+            scrollToAnalyzer();
+        }
+
+        // ============================================
+        // SCROLL TO ANALYZER
+        // ============================================
+        function scrollToAnalyzer() {
+            document.getElementById('analyzer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ============================================
+        // ANALYZE CODE
+        // ============================================
+        function analyzeCode() {
+            const code = codeInput.value.trim();
+            const language = languageSelect.value;
+
+            if (!code) {
+                alert('Please enter some code to analyze');
+                return;
+            }
+
+            // Show loading
+            setLoadingState(true);
+
+            // Simulate processing delay
+            setTimeout(() => {
+                const results = performAnalysis(code, language);
+                displayResults(results);
+                generateDocumentation(code, language, results);
+                setLoadingState(false);
+            }, 1200);
+        }
+
+        function setLoadingState(isLoading) {
+            if (isLoading) {
+                emptyState.classList.add('hidden');
+                resultsContent.classList.add('hidden');
+                loadingState.classList.remove('hidden');
+                analyzeBtn.disabled = true;
+                analyzeBtnText.textContent = 'Analyzing...';
+                analyzeBtnIcon.innerHTML = '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" class="animate-spin" style="animation-origin: center;"/>';
+                analysisStatus.textContent = 'Processing...';
+            } else {
+                loadingState.classList.add('hidden');
+                resultsContent.classList.remove('hidden');
+                analyzeBtn.disabled = false;
+                analyzeBtnText.textContent = 'Analyze Code';
+                analyzeBtnIcon.innerHTML = '<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>';
+                analysisStatus.textContent = 'Analysis complete';
+            }
+        }
+
+        // ============================================
+        // PERFORM ANALYSIS
+        // ============================================
+        function performAnalysis(code, language) {
+            const lines = code.split('\n');
+            const totalLines = lines.length;
+            const chars = code.length;
+            const blankLines = lines.filter(l => l.trim() === '').length;
+            const codeLines = totalLines - blankLines;
+
+            // Count patterns
+            const functionPatterns = {
+                javascript: /\bfunction\s+\w+|=>\s*{|\w+\s*\([^)]*\)\s*{/g,
+                python: /\bdef\s+\w+|class\s+\w+/g,
+                java: /\b(public|private|protected)?\s*(static)?\s*\w+\s+\w+\s*\([^)]*\)\s*{/g,
+                cpp: /\b\w+\s+\w+\s*\([^)]*\)\s*{|class\s+\w+/g,
+                go: /\bfunc\s+(\([^)]+\)\s*)?\w+/g
+            };
+
+            const commentPatterns = {
+                javascript: /\/\/.*$|\/\*[\s\S]*?\*\//gm,
+                python: /#.*$|"""[\s\S]*?"""/gm,
+                java: /\/\/.*$|\/\*[\s\S]*?\*\//gm,
+                cpp: /\/\/.*$|\/\*[\s\S]*?\*\//gm,
+                go: /\/\/.*$|\/\*[\s\S]*?\*\//gm
+            };
+
+            const functions = (code.match(functionPatterns[language]) || []).length;
+            const comments = (code.match(commentPatterns[language]) || []).length;
+
+            // Calculate metrics
+            const commentRatio = totalLines > 0 ? Math.min(100, (comments / totalLines) * 100) : 0;
+            const codeDensity = totalLines > 0 ? Math.min(100, (codeLines / totalLines) * 100) : 0;
+
+            // Calculate scores
+            let qualityScore = 50;
+            let readabilityScore = 50;
+            let maintainabilityScore = 50;
+
+            // Adjust for comments
+            if (commentRatio > 5) qualityScore += 10;
+            if (commentRatio > 10) qualityScore += 10;
+            if (commentRatio > 15) readabilityScore += 15;
+            if (commentRatio > 20) maintainabilityScore += 10;
+
+            // Adjust for code organization
+            if (functions > 0 && functions <= 10) {
+                qualityScore += 10;
+                maintainabilityScore += 15;
+            }
+
+            // Adjust for code size
+            if (totalLines < 100) {
+                readabilityScore += 10;
+            } else if (totalLines > 300) {
+                readabilityScore -= 10;
+                maintainabilityScore -= 10;
+            }
+
+            // Check for good practices
+            if (code.includes('try') || code.includes('catch') || code.includes('except')) {
+                qualityScore += 10;
+                maintainabilityScore += 10;
+            }
+
+            if (code.includes('test') || code.includes('Test')) {
+                qualityScore += 15;
+            }
+
+            // Detect issues
+            const issues = [];
+
+            if (commentRatio < 5) {
+                issues.push({ type: 'warning', message: 'Low documentation coverage - add more comments' });
+            }
+
+            if (code.includes('console.log') || code.includes('print(')) {
+                issues.push({ type: 'warning', message: 'Debug statements detected - remove before production' });
+            }
+
+            if (code.includes('TODO') || code.includes('FIXME')) {
+                issues.push({ type: 'info', message: 'Unresolved TODO/FIXME comments found' });
+            }
+
+            if (!code.includes('try') && !code.includes('catch') && !code.includes('except') && functions > 3) {
+                issues.push({ type: 'warning', message: 'No error handling detected for multiple functions' });
+            }
+
+            if (code.includes('password') || code.includes('secret') || code.includes('api_key')) {
+                issues.push({ type: 'error', message: 'Potential sensitive data in code - review security' });
+            }
+
+            if (functions > 15) {
+                issues.push({ type: 'info', message: 'Consider modularizing - many functions detected' });
+            }
+
+            if (totalLines > 200 && comments < 10) {
+                issues.push({ type: 'error', message: 'Large codebase with minimal documentation' });
+            }
+
+            // Cap scores
+            qualityScore = Math.min(100, Math.max(0, qualityScore));
+            readabilityScore = Math.min(100, Math.max(0, readabilityScore));
+            maintainabilityScore = Math.min(100, Math.max(0, maintainabilityScore));
+
+            return {
+                totalLines,
+                codeLines,
+                blankLines,
+                chars,
+                functions,
+                comments,
+                commentRatio,
+                codeDensity,
+                qualityScore,
+                readabilityScore,
+                maintainabilityScore,
+                issues,
+                language
+            };
+        }
+
+        // ============================================
+        // DISPLAY RESULTS
+        // ============================================
+        function displayResults(results) {
+            // Score Rings
+            const scoreRings = document.getElementById('scoreRings');
+            scoreRings.innerHTML = `
+                ${createScoreRing('Quality', results.qualityScore)}
+                ${createScoreRing('Readability', results.readabilityScore)}
+                ${createScoreRing('Maintainability', results.maintainabilityScore)}
+            `;
+
+            // Metrics Grid
+            const metricsGrid = document.getElementById('metricsGrid');
+            metricsGrid.innerHTML = `
+                ${createMetricCard('Lines', results.totalLines)}
+                ${createMetricCard('Functions', results.functions)}
+                ${createMetricCard('Comments', results.comments)}
+                ${createMetricCard('Language', results.language.charAt(0).toUpperCase() + results.language.slice(1))}
+            `;
+
+            // Progress Bars
+            const progressBars = document.getElementById('progressBars');
+            progressBars.innerHTML = `
+                ${createProgressBar('Comment Ratio', results.commentRatio, 'var(--accent)')}
+                ${createProgressBar('Code Density', results.codeDensity, 'var(--accent-secondary)')}
+            `;
+
+            // Issues
+            const issuesContainer = document.getElementById('issuesContainer');
+            if (results.issues.length > 0) {
+                issuesContainer.innerHTML = `
+                    <h4 class="font-semibold mb-3 flex items-center gap-2 text-sm">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--warning)]">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        Issues (${results.issues.length})
+                    </h4>
+                    <div class="space-y-2">
+                        ${results.issues.map(issue => `
+                            <div class="flex items-start gap-3 p-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]">
+                                <span class="tag tag-${issue.type}">${issue.type}</span>
+                                <span class="text-sm">${issue.message}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                issuesContainer.innerHTML = `
+                    <div class="text-center py-4 text-[var(--success)]">
+                        <svg class="mx-auto mb-2" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <p class="text-sm font-medium">No issues detected</p>
+                    </div>
+                `;
+            }
+
+            // Animate rings
+            setTimeout(() => {
+                document.querySelectorAll('.progress-circle').forEach(circle => {
+                    const score = parseFloat(circle.getAttribute('data-score'));
+                    const circumference = 2 * Math.PI * 42;
+                    const offset = circumference - (score / 100) * circumference;
+                    circle.style.strokeDashoffset = offset;
+                });
+            }, 100);
+        }
+
+        function createScoreRing(label, score) {
+            const color = getScoreColor(score);
+            const circumference = 2 * Math.PI * 42;
+
+            return `
+                <div class="text-center">
+                    <div class="score-ring">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="bg-circle" cx="50" cy="50" r="42"></circle>
+                            <circle 
+                                class="progress-circle" 
+                                cx="50" 
+                                cy="50" 
+                                r="42"
+                                stroke="${color}"
+                                stroke-dasharray="${circumference}"
+                                stroke-dashoffset="${circumference}"
+                                data-score="${score}"
+                            ></circle>
+                        </svg>
+                        <span class="score-text" style="color: ${color}">${score}</span>
+                    </div>
+                    <p class="text-xs text-[var(--muted)] mt-2">${label}</p>
+                </div>
+            `;
+        }
+
+        function createMetricCard(label, value) {
+            return `
+                <div class="metric-card text-center">
+                    <p class="metric-label">${label}</p>
+                    <p class="metric-value">${value}</p>
+                </div>
+            `;
+        }
+
+        function createProgressBar(label, value, color) {
+            return `
+                <div>
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-[var(--muted)]">${label}</span>
+                        <span>${value.toFixed(1)}%</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: ${value}%; background: ${color};"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getScoreColor(score) {
+            if (score >= 80) return 'var(--success)';
+            if (score >= 60) return 'var(--warning)';
+            return 'var(--error)';
+        }
+
+        // ============================================
+        // GENERATE DOCUMENTATION
+        // ============================================
+        function generateDocumentation(code, language, results) {
+            const timestamp = new Date().toLocaleString();
+            const overallScore = Math.round((results.qualityScore + results.readabilityScore + results.maintainabilityScore) / 3);
+
+            const doc = `# Code Analysis Report
+
+## Overview
+- **Language:** ${language.toUpperCase()}
+- **Total Lines:** ${results.totalLines}
+- **Code Lines:** ${results.codeLines}
+- **Analysis Date:** ${timestamp}
+
+## Quality Metrics
+
+| Metric | Score | Rating |
+|--------|-------|--------|
+| Quality | ${results.qualityScore}/100 | ${getRating(results.qualityScore)} |
+| Readability | ${results.readabilityScore}/100 | ${getRating(results.readabilityScore)} |
+| Maintainability | ${results.maintainabilityScore}/100 | ${getRating(results.maintainabilityScore)} |
+| **Overall** | **${overallScore}/100** | **${getRating(overallScore)}** |
+
+## Statistics
+
+- **Characters:** ${results.chars.toLocaleString()}
+- **Functions/Methods:** ${results.functions}
+- **Comments:** ${results.comments}
+- **Comment Ratio:** ${results.commentRatio.toFixed(1)}%
+- **Code Density:** ${results.codeDensity.toFixed(1)}%
+
+## Issues & Recommendations
+
+ ${results.issues.length > 0 
+    ? results.issues.map(i => `- [${i.type.toUpperCase()}] ${i.message}`).join('\n')
+    : '- No significant issues detected'}
+
+## Suggestions
+
+ ${results.commentRatio < 10 ? '- Add more inline comments and documentation\n' : ''}${!code.includes('try') && !code.includes('except') && results.functions > 3 ? '- Implement error handling with try-catch blocks\n' : ''}${results.functions > 10 ? '- Consider modularizing code into separate files\n' : ''}- Follow consistent naming conventions
+- Add unit tests for critical functions
+- Use a linter for code consistency
+
+---
+*Generated by CodeLens AI*`;
+
+            docsOutput.textContent = doc;
+        }
+
+        function getRating(score) {
+            if (score >= 80) return 'Excellent';
+            if (score >= 60) return 'Good';
+            if (score >= 40) return 'Fair';
+            return 'Needs Work';
+        }
+
+        // ============================================
+        // COPY DOCUMENTATION
+        // ============================================
+        function copyDocs() {
+            const text = docsOutput.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyBtn');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Copied!
+                `;
+                btn.style.borderColor = 'var(--success)';
+                btn.style.color = 'var(--success)';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.borderColor = '';
+                    btn.style.color = '';
+                }, 2000);
+            });
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        updateCounts();
+    </script>
+</body>
+</html>
